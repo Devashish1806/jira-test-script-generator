@@ -1,9 +1,20 @@
 from pydantic import BaseModel
 from typing import List, Optional
 
+class ProjectRef(BaseModel):
+    key: str
+
+class IssueType(BaseModel):
+    name: Optional[str] = None
+
 class JiraIssueFields(BaseModel):
-    project_key: str
-    parent_key: str
+    project: ProjectRef
+    parent: ProjectRef
     summary: str
-    description: Optional[str]
-    issuetype: Optional[str]
+    issuetype: IssueType
+    
+class JiraUpdateIssueFields(BaseModel):
+    project: Optional[ProjectRef] = None
+    parent: Optional[ProjectRef] = None
+    summary: Optional[str] = None
+    issuetype: Optional[IssueType] = None
