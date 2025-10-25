@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException
-from typing import List
+from typing import List, Dict, Any
 
 from app.services.jira_services import (
     get_jira_issue,
@@ -7,8 +7,10 @@ from app.services.jira_services import (
     update_jira_issue,
     bulk_update_issue_cards,
     delete_jira_issue,
+    create_jira_test_issues,
+    status_jira_test_issues
 )
-from app.schemas.jira_schema import JiraIssueFields, JiraUpdateIssueFields
+from app.schemas.jira_schema import JiraIssueFields, JiraUpdateIssueFields, JiraTestIssueFields
 
 router = APIRouter()
 
@@ -57,3 +59,22 @@ async def delete_issue(issue_key: str):
     if not deleted:
         raise HTTPException(status_code=404, detail=f"Issue {issue_key} not found or not deleted")
     return {"detail": f"Issue {issue_key} deleted successfully."}
+
+@router.post("/issues/test")
+async def create_test_issue(issues: List[JiraTestIssueFields]):
+    """Create a JIRA Test issue (uses Xray/test-specific fields)."""
+    created = await create_jira_test_issues(issues)
+    if not created:
+        raise HTTPException(status_code=400, detail="Failed to create test issue")
+    return created
+
+@router.get("/issues/test/{job_id}/status")
+async def get_test_issues_status(job_id: str):
+    """Get the status of a bulk test issue creation job in Xray Cloud."""
+    status = await status_jira_test_issues(job_id)
+    if not status:
+        raise HTTPException(
+            status_code=404, 
+            detail=f"Job {job_id} not found or status check failed"
+        )
+    return status

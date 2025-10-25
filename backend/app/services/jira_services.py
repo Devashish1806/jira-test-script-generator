@@ -1,7 +1,8 @@
 import httpx
-from typing import Optional, Dict, Any, Tuple
+from typing import Optional, Dict, Any, Tuple, List
 from app.core.config import settings
-from app.schemas.jira_schema import JiraIssueFields, JiraUpdateIssueFields
+from app.schemas.jira_schema import JiraIssueFields, JiraUpdateIssueFields, JiraTestIssueFields
+import json
 
 def __ensure_jira_settings() -> Tuple[str, httpx.BasicAuth]:
     """Ensure that JIRA settings are configured properly."""
@@ -21,12 +22,52 @@ def __default_headers() -> Dict[str, str]:
         "Content-Type": "application/json"
     }
     
+
+def __ensure_xray_cloud_settings() -> Tuple[str, str, str]:
+    """Ensure that Xray Cloud settings are configured properly."""
+    if not all([settings.XRAY_CLIENT_ID, settings.XRAY_CLIENT_SECRET, settings.XRAY_BASE_URL]):
+        raise ValueError("Xray Cloud settings are not properly configured.")
     
+    xbase = settings.XRAY_BASE_URL.rstrip('/')
+    client_id = settings.XRAY_CLIENT_ID
+    client_secret = settings.XRAY_CLIENT_SECRET
+    
+    return xbase, client_id, client_secret
+
+
+async def __default_xray_headers(xbase: str, client_id: str, client_secret: str) -> Dict[str, str]:
+    """Generate default headers for Xray Cloud API requests."""
+    
+    # Authenticate to Xray Cloud to obtain a bearer token
+    auth_endpoint = f"{xbase}/api/v2/authenticate"
+    auth_headers = {"Content-Type": "application/json", "Accept": "application/json"}
+
+    auth_resp = await __send_request(
+        "POST",
+        endpoint=auth_endpoint,
+        auth=None,
+        headers=auth_headers,
+        json={"client_id": client_id, "client_secret": client_secret},
+        raise_on_error=True,
+        return_full_response=False,
+    )
+
+    # auth_resp is expected to be a token string when successful
+    token = auth_resp if isinstance(auth_resp, str) else (auth_resp.get("token") if isinstance(auth_resp, dict) else None)
+    if not token:
+        return False
+
+    return {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+    }
+   
 async def __send_request(
     method: str,
     endpoint: str,
     *,
-    auth: httpx.BasicAuth,
+    auth: httpx.BasicAuth | None,
     headers: Dict[str, str],
     json: Optional[Dict[str, Any]] = None,
     params: Optional[Dict[str, Any]] = None,
@@ -213,3 +254,39 @@ async def delete_jira_issue(issue_key: str) -> Any:
     if isinstance(resp, dict) and resp.get("ok"):
         return True
     return False
+
+
+async def create_jira_test_issues(issues: List[JiraTestIssueFields]) -> Any:
+    """Create a new JIRA test issue (Xray Cloud)."""
+    if not issues:
+        raise ValueError("issue must be provided")
+    
+    xbase, client_id, client_secret = __ensure_xray_cloud_settings()
+    headers = await __default_xray_headers(xbase, client_id, client_secret)
+    endpoint = f"{xbase}/api/v2/import/test/bulk"
+
+    # Handle array of issues
+    payload = []
+    if isinstance(issues, list):
+        for issue in issues:
+            if hasattr(issue, "dict"):
+                payload.append(issue.dict(exclude_unset=True))
+            elif isinstance(issue, dict):
+                payload.append(issue)
+            else:
+                payload.append(vars(issue))
+
+    return await __send_request("POST", endpoint=endpoint, auth=None, headers=headers, json=payload)
+
+
+async def status_jira_test_issues(jobId: str) -> Any:
+    """Status of new JIRA test issues (Xray Cloud)."""
+    if not jobId:
+        raise ValueError("jobId must be provided")
+    
+    xbase, client_id, client_secret = __ensure_xray_cloud_settings()
+    headers = await __default_xray_headers(xbase, client_id, client_secret)
+    endpoint = f"{xbase}/api/v2/import/test/bulk/{jobId}/status"
+
+    return await __send_request("GET", endpoint=endpoint, auth=None, headers=headers)
+

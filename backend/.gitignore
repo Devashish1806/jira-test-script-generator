@@ -3,6 +3,12 @@
 *.py[codz]
 *$py.class
 
+# Distribution virtual environments
+.env/
+.venv/
+env/
+venv/
+
 # C extensions
 *.so
 
