@@ -62,7 +62,8 @@ async def __default_xray_headers(xbase: str, client_id: str, client_secret: str)
         "Accept": "application/json",
         "Content-Type": "application/json",
     }
-   
+
+
 async def __send_request(
     method: str,
     endpoint: str,
