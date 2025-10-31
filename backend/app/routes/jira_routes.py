@@ -25,7 +25,7 @@ async def get_jira_issue_by_key(issue_key: str):
     """Fetch a single JIRA issue by its key."""
     jql = f'key = {issue_key}'
     issue = await get_jira_issue(jql, max_results=1)
-    if not issues:
+    if not issue:
         raise HTTPException(status_code=404, detail=f"Issue {issue_key} not found")
     return issue
 

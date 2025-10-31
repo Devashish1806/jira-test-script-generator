@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Any
 from enum import Enum
 
 class ProjectRef(BaseModel):
@@ -18,16 +18,33 @@ class IssueType(str, Enum):
 class IssueTypeRef(BaseModel):
     name: IssueType = IssueType.Test
 
+class Description(BaseModel):
+    type: str = "doc"
+    version: int = 1
+    content: List[Dict[str, Any]] = [
+        {
+            "type": "paragraph",
+            "content": [
+                {
+                    "type": "text",
+                    "text": "Issue description goes here."
+                }
+            ]
+        }
+    ]
+
 class JiraIssueFields(BaseModel):
     project: ProjectRef
     parent: ParentRef
     summary: str
+    description: Description = None
     issuetype: IssueTypeRef
     
 class JiraUpdateIssueFields(BaseModel):
     project: Optional[ProjectRef] = None
     parent: Optional[ParentRef] = None
     summary: Optional[str] = None
+    description: Optional[Description] = None
     issuetype: Optional[IssueTypeRef] = None
 
 class TestType(str, Enum):

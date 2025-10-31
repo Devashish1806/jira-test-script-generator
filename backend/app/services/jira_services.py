@@ -120,7 +120,7 @@ async def get_jira_issue(jql: str, max_results: int = 50) -> Any:
     json_data = {
         "jql": jql,
         "maxResults": max_results,
-        "fields": ["summary", "project", "assignee", "reporter", "created", "status"],
+        "fields": ["summary", "description", "acceptanceCriteria", "customfield_12345"],  # example fields
         "fieldsByKeys": True,
         # "expand": ["string"],
         "properties": [],
